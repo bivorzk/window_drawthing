@@ -1,33 +1,20 @@
-import pyautogui
-import time
+import math
+import pyautogui as pag
+import win32con
+import win32api
+import win32gui as wgui
 
 
-def test():
-    x = 37
-    y = 21
-    c = 37
-    while True:
-        for i in range(5):
-            pyautogui.moveTo(x, y)
-            x += 81
-            y += 0
-            time.sleep(0.1)
-        break
-    pyautogui.moveTo(36, y+89)
-    y = 89
-    print(x, y, c)
-    for i in range(5):
-        c += 81
-        print(x, y, c)
-        pyautogui.moveTo(c, y)
-        time.sleep(0.1)
-
-
-def coords():
-    time.sleep(2)
-    print(pyautogui.position())
+def test():    print("Calc Test Start")
+    # Open Calculator
+    pag.press('win')
+    pag.write('Calculator')
+    pag.press('enter')
+    pag.sleep(1)
+    pag.write('6')
+    pag.press('+')
+    pag.write('7')
 
 
 
-#coords()
 test()
