@@ -3,6 +3,10 @@
 #include <cmath>
 #include <windows.h>
 #include "desktop_functions.h"
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 using namespace sf;
 using namespace std;
 
@@ -32,7 +36,7 @@ int main()
 
     int DESKTOP_X = 800;
     int DESKTOP_Y = 800;
-    int CELL_SIZE = 100;
+    int CELL_SIZE = 30;
     float LINETHICKNESS = 5.0f;
     bool mousePressed = false;
 
@@ -113,6 +117,44 @@ int main()
                         cout << "Desktop icons hidden" << endl;
                     }
                 }
+                
+                // Move nearest desktop icon to mouse position on Space key
+                if (event->getIf<Event::KeyPressed>()->code == Keyboard::Key::Space) {
+                    cout << "Space key pressed!" << endl;
+                    cout << "showDesktopIcons: " << showDesktopIcons << ", desktopIcons.size(): " << desktopIcons.size() << endl;
+                    if (showDesktopIcons && !desktopIcons.empty()) {
+                        cout << "Desktop icons are shown and available" << endl;
+                        Vector2i mousePos = Mouse::getPosition(window);
+                        int appX = static_cast<int>((static_cast<float>(mousePos.x) / DESKTOP_X) * screenWidth);
+                        int appY = static_cast<int>((static_cast<float>(mousePos.y) / DESKTOP_Y) * screenHeight);
+                        
+                        cout << "Mouse in window: (" << mousePos.x << ", " << mousePos.y << ")" << endl;
+                        cout << "Converted to desktop: (" << appX << ", " << appY << ")" << endl;
+                        cout << "Screen size: " << screenWidth << "x" << screenHeight << ", Window size: " << DESKTOP_X << "x" << DESKTOP_Y << endl;
+                        
+                        // Find nearest icon
+                        int nearestIndex = -1;
+                        float minDist = numeric_limits<float>::max();
+                        for (int i = 0; i < desktopIcons.size(); ++i) {
+                            int dx = desktopIcons[i].position.x - appX;
+                            int dy = desktopIcons[i].position.y - appY;
+                            float dist = sqrt(dx * dx + dy * dy);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                nearestIndex = i;
+                            }
+                        }
+                        
+                        if (nearestIndex != -1) {
+                            cout << "Nearest icon " << nearestIndex << " is currently at (" 
+                                 << desktopIcons[nearestIndex].position.x << ", " << desktopIcons[nearestIndex].position.y << ")" << endl;
+                            cout << "Distance: " << minDist << " pixels" << endl;
+                            bool success = MoveDesktopIcon(nearestIndex, appX, appY);
+                            cout << "Moving icon " << nearestIndex << " to (" << appX << ", " << appY << ") - " 
+                                 << (success ? "Success" : "Failed") << endl;
+                        }
+                    }
+                }
             }
         }
 
@@ -147,11 +189,7 @@ int main()
             cout << "App Coordinates: (" << appX << ", " << appY << ") - Grid Cell: (" << gridX << ", " << gridY << ")\n";
 
             }
-        
-
-
         }
-        
         
         // Clear the window
         window.clear();

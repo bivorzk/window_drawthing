@@ -210,3 +210,34 @@ int GetDesktopIconCount() {
 }
 
 #endif // DESKTOP_FUNCTIONS_H
+
+// Move a desktop icon by index to a new position (desktop coordinates)
+inline bool MoveDesktopIcon(int iconIndex, int newX, int newY) {
+    std::wcout << L"Attempting to move icon " << iconIndex << L" to (" << newX << L", " << newY << L")" << std::endl;
+    
+    HWND lv = GetDesktopListView();
+    if (!lv) {
+        std::wcout << L"Failed to get desktop ListView handle" << std::endl;
+        return false;
+    }
+    
+    // Check if auto-arrange is enabled
+    LONG_PTR style = GetWindowLongPtrW(lv, GWL_STYLE);
+    if (style & LVS_AUTOARRANGE) {
+        std::wcout << L"Warning: Desktop has auto-arrange enabled, move may not work" << std::endl;
+    }
+    
+    // LVM_SETITEMPOSITION expects LPARAM as MAKELPARAM(x, y)
+    LPARAM pos = MAKELPARAM(newX, newY);
+    std::wcout << L"Sending LVM_SETITEMPOSITION message..." << std::endl;
+    LRESULT res = SendMessageW(lv, LVM_SETITEMPOSITION, iconIndex, pos);
+    
+    std::wcout << L"SendMessage result: " << res << std::endl;
+    if (res == 0) {
+        DWORD error = GetLastError();
+        std::wcout << L"Move failed with error: " << error << std::endl;
+    }
+    
+    // LVM_SETITEMPOSITION returns TRUE on success
+    return res != 0;
+}
