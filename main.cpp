@@ -4,9 +4,6 @@
 #include <windows.h>
 #include "desktop_functions.h"
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 using namespace sf;
 using namespace std;
 
@@ -36,7 +33,7 @@ int main()
 
     int DESKTOP_X = 800;
     int DESKTOP_Y = 800;
-    int CELL_SIZE = 30;
+    int CELL_SIZE = 10;
     float LINETHICKNESS = 5.0f;
     bool mousePressed = false;
 
@@ -100,17 +97,6 @@ int main()
                         // Get desktop icons
                         desktopIcons = GetDesktopIcons();
                         iconDots.clear();
-                        
-                        // Create visual dots for each desktop icon
-                        for (const auto& icon : desktopIcons) {
-                            CircleShape dot(3.0f);
-                            dot.setFillColor(Color::Red);
-                            // Scale desktop coordinates to window coordinates
-                            float x = (float(icon.position.x) / screenWidth) * DESKTOP_X;
-                            float y = (float(icon.position.y) / screenHeight) * DESKTOP_Y;
-                            dot.setPosition(Vector2f(x - 3.0f, y - 3.0f));
-                            iconDots.push_back(dot);
-                        }
                         cout << "Desktop icons displayed: " << desktopIcons.size() << " icons found" << endl;
                     } else {
                         iconDots.clear();
