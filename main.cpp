@@ -28,12 +28,23 @@ RectangleShape createThickLine(Vector2f point1, Vector2f point2, float thickness
     return line;
 }
 
+// Function to restore desktop icons to their original positions
+void RestoreOriginalPositions(const vector<DesktopIcon>& originalPositions) {
+    cout << "Restoring " << originalPositions.size() << " icons to their original positions..." << endl;
+    for (const auto& icon : originalPositions) {
+        bool success = MoveDesktopIcon(icon.index, icon.position.x, icon.position.y);
+        cout << "Restoring icon " << icon.index << " to (" << icon.position.x << ", " << icon.position.y << ") - " 
+             << (success ? "Success" : "Failed") << endl;
+    }
+    cout << "Icon restoration complete!" << endl;
+}
+
 int main()
 {
 
     int DESKTOP_X = 800;
     int DESKTOP_Y = 800;
-    int CELL_SIZE = 10;
+    int CELL_SIZE = 30;
     float LINETHICKNESS = 5.0f;
     bool mousePressed = false;
 
@@ -49,8 +60,10 @@ int main()
     
     // Desktop integration
     vector<DesktopIcon> desktopIcons;
+    vector<DesktopIcon> originalIconPositions; // Store original positions for restoration
     vector<CircleShape> iconDots;
     bool showDesktopIcons = false;
+    bool originalPositionsSaved = false;
 
     // run the program as long as the window is open
     while (window.isOpen())
@@ -97,6 +110,13 @@ int main()
                         // Get desktop icons
                         desktopIcons = GetDesktopIcons();
                         iconDots.clear();
+                        
+                        // Save original positions on first load
+                        if (!originalPositionsSaved && !desktopIcons.empty()) {
+                            originalIconPositions = desktopIcons; // Copy all icon data including positions
+                            originalPositionsSaved = true;
+                            cout << "Saved original positions of " << originalIconPositions.size() << " icons" << endl;
+                        }
                         cout << "Desktop icons displayed: " << desktopIcons.size() << " icons found" << endl;
                     } else {
                         iconDots.clear();
@@ -104,41 +124,65 @@ int main()
                     }
                 }
                 
-                // Move nearest desktop icon to mouse position on Space key
+                // Arrange icons along drawn paths on Space key
                 if (event->getIf<Event::KeyPressed>()->code == Keyboard::Key::Space) {
                     cout << "Space key pressed!" << endl;
                     cout << "showDesktopIcons: " << showDesktopIcons << ", desktopIcons.size(): " << desktopIcons.size() << endl;
                     if (showDesktopIcons && !desktopIcons.empty()) {
-                        cout << "Desktop icons are shown and available" << endl;
-                        Vector2i mousePos = Mouse::getPosition(window);
-                        int appX = static_cast<int>((static_cast<float>(mousePos.x) / DESKTOP_X) * screenWidth);
-                        int appY = static_cast<int>((static_cast<float>(mousePos.y) / DESKTOP_Y) * screenHeight);
+                            cout << "Desktop icons are shown and available" << endl;
                         
-                        cout << "Mouse in window: (" << mousePos.x << ", " << mousePos.y << ")" << endl;
-                        cout << "Converted to desktop: (" << appX << ", " << appY << ")" << endl;
-                        cout << "Screen size: " << screenWidth << "x" << screenHeight << ", Window size: " << DESKTOP_X << "x" << DESKTOP_Y << endl;
-                        
-                        // Find nearest icon
-                        int nearestIndex = -1;
-                        float minDist = numeric_limits<float>::max();
-                        for (int i = 0; i < desktopIcons.size(); ++i) {
-                            int dx = desktopIcons[i].position.x - appX;
-                            int dy = desktopIcons[i].position.y - appY;
-                            float dist = sqrt(dx * dx + dy * dy);
-                            if (dist < minDist) {
-                                minDist = dist;
-                                nearestIndex = i;
+                        // Arrange icons along drawn lines
+                        if (!lines.empty()) {
+                            cout << "Found " << lines.size() << " drawn line segments" << endl;
+                            
+                            // Collect all points from drawn lines
+                            vector<Vector2f> drawnPoints;
+                            for (const auto& line : lines) {
+                                Vector2f pos = line.getPosition();
+                                Vector2f size = line.getSize();
+                                float angle = line.getRotation().asDegrees() * M_PI / 180.0f;
+                                
+                                // Add start and end points of each line
+                                drawnPoints.push_back(pos);
+                                Vector2f endPoint;
+                                endPoint.x = pos.x + size.x * cos(angle);
+                                endPoint.y = pos.y + size.x * sin(angle);
+                                drawnPoints.push_back(endPoint);
                             }
+                            
+                            cout << "Collected " << drawnPoints.size() << " points from drawn lines" << endl;
+                            
+                            // Distribute icons along the drawn path
+                            int iconsToPlace = min((int)desktopIcons.size(), (int)drawnPoints.size());
+                            for (int i = 0; i < iconsToPlace; ++i) {
+                                // Calculate which point along the path this icon should go to
+                                float t = (float)i / max(1, iconsToPlace - 1); // Normalize to 0-1
+                                int pointIndex = (int)(t * (drawnPoints.size() - 1));
+                                pointIndex = min(pointIndex, (int)drawnPoints.size() - 1);
+                                
+                                Vector2f windowPoint = drawnPoints[pointIndex];
+                                
+                                // Convert window coordinates to desktop coordinates
+                                int desktopX = static_cast<int>((windowPoint.x / DESKTOP_X) * screenWidth);
+                                int desktopY = static_cast<int>((windowPoint.y / DESKTOP_Y) * screenHeight);
+                                
+                                bool success = MoveDesktopIcon(i, desktopX, desktopY);
+                                cout << "Moving icon " << i << " to drawn point (" << desktopX << ", " << desktopY << ") - " 
+                                     << (success ? "Success" : "Failed") << endl;
+                            }
+                        } else {
+                            cout << "No lines drawn yet! Draw some lines first, then press Space." << endl;
                         }
-                        
-                        if (nearestIndex != -1) {
-                            cout << "Nearest icon " << nearestIndex << " is currently at (" 
-                                 << desktopIcons[nearestIndex].position.x << ", " << desktopIcons[nearestIndex].position.y << ")" << endl;
-                            cout << "Distance: " << minDist << " pixels" << endl;
-                            bool success = MoveDesktopIcon(nearestIndex, appX, appY);
-                            cout << "Moving icon " << nearestIndex << " to (" << appX << ", " << appY << ") - " 
-                                 << (success ? "Success" : "Failed") << endl;
-                        }
+                    }
+                }
+                
+                // Restore original positions on R key
+                if (event->getIf<Event::KeyPressed>()->code == Keyboard::Key::R) {
+                    if (originalPositionsSaved && !originalIconPositions.empty()) {
+                        cout << "R key pressed! Restoring original icon positions..." << endl;
+                        RestoreOriginalPositions(originalIconPositions);
+                    } else {
+                        cout << "No original positions saved yet. Press D first to load icons." << endl;
                     }
                 }
             }
@@ -193,5 +237,10 @@ int main()
         }
 
         window.display();
+    }
+    
+    // Restore original icon positions before closing
+    if (originalPositionsSaved && !originalIconPositions.empty()) {
+        RestoreOriginalPositions(originalIconPositions);
     }
 }
